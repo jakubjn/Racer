@@ -58,7 +58,7 @@ function headersToString(headers: Record<string, string[]>): string {
 
 // Python Interop
 function sendSinglePacket(sdk: SDK<BackendAPI, BackendEvents>, data: RequestData): Promise<RequestData> {
-  const py_path = path.join(sdk.meta.assetsPath(), "SPA.py")
+  const py_path = path.join(sdk.meta.assetsPath(), "SPA")
   const data_path = path.join(sdk.meta.assetsPath(), "data.json")
 
   // Install dependencies for python
@@ -66,7 +66,7 @@ function sendSinglePacket(sdk: SDK<BackendAPI, BackendEvents>, data: RequestData
   writeFileSync(data_path, JSON.stringify(data, null, 2));
 
   return new Promise((resolve, reject) => {
-    const proc = spawn('python3', [py_path]);
+    const proc = spawn(py_path);
 
     let stderr = '';
 
@@ -78,8 +78,6 @@ function sendSinglePacket(sdk: SDK<BackendAPI, BackendEvents>, data: RequestData
       if (code === 0) {
         const raw = readFileSync(data_path, "utf-8");
         const json_data = JSON.parse(raw);
-
-        sdk.console.error(raw)
 
         const responses: ResponseContext[] = json_data.responses as ResponseContext[];
 
@@ -181,7 +179,7 @@ export async function sendRequests(sdk: SDK<BackendAPI, BackendEvents>, context:
     if(request && response) {
       const id: string = Math.floor(Math.random() * 0xffffffff).toString(16).padStart(8, '0');
 
-      const result = await insertStatement.run(
+      await insertStatement.run(
         id, 
         host, 
         request.method, 
@@ -192,8 +190,6 @@ export async function sendRequests(sdk: SDK<BackendAPI, BackendEvents>, context:
         response.headers,
         response.body
       )
-
-      sdk.console.log(result)
     }
   }
 
@@ -208,7 +204,7 @@ export async function getSessions(sdk: SDK<BackendAPI, BackendEvents>): Promise<
     const statement = await db.prepare("SELECT * FROM sessions");
     const sessions = await statement.all()
 
-    sdk.console.warn("Retrieved")
+    sdk.console.log("Retrieved")
 
     return sessions
   } catch {
@@ -223,13 +219,11 @@ export async function deleteSession(sdk: SDK<BackendAPI, BackendEvents>, id: str
     DELETE FROM sessions WHERE id = ?
   `);
 
-  const result = deleteStatement.run(id);
-
-  sdk.console.log(result)
+  await deleteStatement.run(id);
 }
 
 export async function log_data(sdk: SDK<BackendAPI, BackendEvents>, data: any): Promise<void> {
-  sdk.console.warn(data)
+  sdk.console.log(data)
 }
 
 export type BackendAPI = DefineAPI<{
@@ -245,6 +239,11 @@ export type BackendEvents = DefineEvents<{
 
 
 export function init(sdk: SDK<BackendAPI, BackendEvents>) {
+  // Setup Binary
+  const py_path = path.join(sdk.meta.assetsPath(), "SPA")
+
+  spawn("chmod", ["+x", py_path], { stdio: "inherit" });
+
   // Register API
 
   sdk.api.register("sendRequests", sendRequests)

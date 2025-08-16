@@ -36,7 +36,9 @@ export const init = (sdk: FrontendSDK) => {
     body: root,
   });
 
-  sdk.sidebar.registerItem("Racer", "/racer");
+  sdk.sidebar.registerItem("Racer", "/racer", {
+    icon: "fa-solid fa-truck-fast"
+  });
 
   // Function to Send Request to Plugin
   function sendToPlugin(context: CommandContext) {
@@ -84,6 +86,6 @@ export const init = (sdk: FrontendSDK) => {
   sdk.menu.registerItem({
     type: "RequestRow",
     commandId: "send",
-    leadingIcon: "fas fa-hand",
+    leadingIcon: "fa-solid fa-truck-fast",
   });
 };

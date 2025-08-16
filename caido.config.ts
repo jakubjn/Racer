@@ -23,7 +23,7 @@ export default defineConfig({
       kind: "backend",
       id: "backend",
       root: "packages/backend",
-      assets : ["./assets/SPA.py"]
+      assets : ["./assets/SPA", "./assets/data.json"]
     },
     {
       kind: 'frontend',

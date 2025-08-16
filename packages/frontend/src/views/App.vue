@@ -12,8 +12,6 @@ import { ref } from "vue";
 import Toast from "primevue/toast";
 import { useToast } from "primevue/usetoast";
 
-// import { VueMarkdownIt } from '@f3ve/vue-markdown-it';
-
 // Retrieve the SDK instance to interact with the backend
 const sdk = useSDK();
 
@@ -25,10 +23,6 @@ const request_text = ref<string>("")
 const response_text = ref<string>("")
 
 const toast = useToast();
-
-// const options = {
-//   breaks: true
-// }
 
 sdk.backend.onEvent("race-finished", async () => {
   sessions.value = await sdk.backend.getSessions();
@@ -111,9 +105,6 @@ ${activeSession.value?.response_body}`
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Textarea wrap="soft" v-model="request_text" readonly id="request" rows="60" class="resize-none text-lg break-al leading-relaxed" />
           <Textarea wrap="soft" v-model="response_text" readonly id="response" rows="60" class="resize-none text-lg break-all leading-relaxed" />
-          
-          <!-- <vue-markdown-it :source="request_text" :options="options"/>
-          <vue-markdown-it :source="response_text" :options="options"/> -->
         </div>
       </div>
     </template>
