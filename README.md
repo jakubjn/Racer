@@ -1,6 +1,6 @@
 # Racer
 
-A Caido Plugin for find Race Conditions with the Single Packet Attacker
+A Caido Plugin for finding Race Conditions with the Single Packet Attack. Essentially a wrapper around the 'h2spacex' library in Python.
 
 ## Usage
 
