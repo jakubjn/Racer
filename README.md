@@ -5,3 +5,9 @@ A Caido Plugin for finding Race Conditions with the Single Packet Attack. Essent
 ## Usage
 
 The plugin can be used from the HTTP History ONLY. The requests must be sent from the replay tab and then found in the HTTP History to race them.
+
+## To Do
+
+- Improve the Editor
+- Enable Last-Byte Sync Attack for Different Hosts
+- Create a Context Menu in the Replay Tab for Unsent Requests

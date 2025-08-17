@@ -11,12 +11,12 @@ const id = "racer";
 export default defineConfig({
   id,
   name: "Racer",
-  description: "Plugin for exploiting Race Conditions in Caido",
+  description: "Exploit Race Conditions in Caido with the Single Packet Attack",
   version: "0.0.1",
   author: {
     name: "jakubjn",
     email: "jakdevreal@gmail.com",
-    url: "https://caido.io",
+    url: "https://github.com/jakubjn",
   },
   plugins: [
     {
