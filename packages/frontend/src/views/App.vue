@@ -41,6 +41,15 @@ sdk.backend.onEvent("race-finished", async () => {
   });
 });
 
+sdk.backend.onEvent("toast", async (severity: "success" | "info" | "warn" | "error" | "secondary" | "contrast" | undefined, summary: string, detail: string) => {
+  toast.add({
+    severity: severity,
+    summary: summary,
+    detail: detail,
+    life: 3000
+  });
+})
+
 function selectSession(session: Session) {
   activeSession.value = session
 
@@ -103,8 +112,8 @@ ${activeSession.value?.response_body}`
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Textarea wrap="soft" v-model="request_text" readonly id="request" rows="60" class="resize-none text-lg break-al leading-relaxed" />
-          <Textarea wrap="soft" v-model="response_text" readonly id="response" rows="60" class="resize-none text-lg break-all leading-relaxed" />
+          <Textarea wrap="soft" v-model="request_text" readonly id="request" class="resize-none text-lg break-al leading-relaxed h-[75vh]" />
+          <Textarea wrap="soft" v-model="response_text" readonly id="response" class="resize-none text-lg break-all leading-relaxed h-[75vh]" />
         </div>
       </div>
     </template>

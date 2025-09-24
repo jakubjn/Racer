@@ -36,7 +36,8 @@ type RequestData = {
   responses: ResponseContext[]
 }
 
-// Function to Convert Record to String
+// HELPER FUNCTIONS
+
 function headersToString(headers: Record<string, string[]>): string {
   const forbidden = new Set([
     'connection',
@@ -56,12 +57,73 @@ function headersToString(headers: Record<string, string[]>): string {
     .join('\n');
 }
 
-// Python Interop
+function stringToHeaders(raw: string) {
+  if (!raw) return {};
+
+  // Normalize newlines, and collapse header continuations (lines starting with space/tab)
+  raw = raw.replace(/\r\n/g, '\n');
+
+  const logicalLines = [];
+
+  for (const line of raw.split('\n')) {
+    if (/^[ \t]/.test(line)) {
+      // continuation for previous header
+      if (logicalLines.length) {
+        logicalLines[logicalLines.length - 1] += ' ' + line.trim();
+      }
+    } else {
+      logicalLines.push(line);
+    }
+  }
+
+  const out = Object.create(null);
+
+  for (const ln of logicalLines) {
+    if (!ln.trim()) continue;
+    const idx = ln.indexOf(':');
+    if (idx === -1) continue; // skip garbage
+    const name = ln.slice(0, idx).trim().toLowerCase();
+    const value = ln.slice(idx + 1).trim();
+
+    let parts;
+    if (name === 'cookie') {
+      // Cookies are semicolon-separated pairs
+      parts = value.split(/;\s*/);
+    } else if (name === 'set-cookie') {
+      // set-cookie should be preserved per-cookie (do not split on commas; cookies contain commas)
+      parts = [value];
+    } else {
+      // RFC: many headers are comma-separated lists — split on commas not inside quotes
+      // simple split on unquoted commas:
+      parts = value.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/);
+    }
+
+    parts = parts
+      .map(p => p.trim())
+      .filter(Boolean);
+
+    // dedupe while preserving order
+    const seen = new Set();
+    const uniq = [];
+    for (const p of parts) {
+      if (!seen.has(p)) {
+        seen.add(p);
+        uniq.push(p);
+      }
+    }
+
+    // merge with existing same-name header
+    out[name] = out[name] ? out[name].concat(uniq) : uniq;
+  }
+
+  return out;
+}
+
+// PYTHON INTEROP
+
 function sendSinglePacket(sdk: SDK<BackendAPI, BackendEvents>, data: RequestData): Promise<RequestData> {
   const py_path = path.join(sdk.meta.assetsPath(), "SPA")
   const data_path = path.join(sdk.meta.assetsPath(), "data.json")
-
-  // Install dependencies for python
 
   writeFileSync(data_path, JSON.stringify(data, null, 2));
 
@@ -85,17 +147,20 @@ function sendSinglePacket(sdk: SDK<BackendAPI, BackendEvents>, data: RequestData
 
         resolve(data);
       } else {
+        sdk.api.send("toast", "error", "Error", "An error occured while sending the requests");
         reject(new Error(`Exited with code ${code}, stderr: ${stderr}`));
       }
     });
 
     proc.on('error', (err) => {
+      sdk.api.send("toast", "error", "Error", "An error occured while sending the requests");
       reject(err);
     });
   });
 }
 
-// Main Function For Sending Requests
+// MAIN FUNCTION
+
 export async function sendRequests(sdk: SDK<BackendAPI, BackendEvents>, context: any): Promise<void> {
   const requests_raw: RequestRaw[] = context.requests
 
@@ -193,7 +258,11 @@ export async function sendRequests(sdk: SDK<BackendAPI, BackendEvents>, context:
     }
   }
 
-  sdk.api.send("race-finished");
+  if(data.responses.length > 0) {
+    sdk.api.send("race-finished");
+  } else {
+    sdk.api.send("toast", "error", "Error", "An error occured while sending the requests");
+  }
 }
 
 // Returns Active Sessions
@@ -226,17 +295,170 @@ export async function log_data(sdk: SDK<BackendAPI, BackendEvents>, data: any): 
   sdk.console.log(data)
 }
 
+// QUEUE FUNCTIONS
+
+export async function queueRequest(sdk: SDK<BackendAPI, BackendEvents>, context: any): Promise<void> {
+  const db = await sdk.meta.db();
+
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS queue (
+      id TEXT PRIMARY KEY,
+      host TEXT,
+      port TEXT,
+      method TEXT,
+      path TEXT,
+      headers TEXT,
+      body TEXT
+    );
+  `);
+  
+  const insertStatement = await db.prepare(`
+    INSERT INTO queue (
+      id,
+      host,
+      port,
+      method,
+      path,
+      headers,
+      body
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  const raw = context.request.raw;
+
+  const normalized = raw.replace(/\r\n/g, '\n');
+  const parts = normalized.split('\n\n', 2);
+
+  const headersBlock = parts[0]|| '';
+  const body = parts[1] || '';
+
+  const lines = headersBlock.split('\n');
+
+  const method = lines[0].split(' ')[0];
+
+  const headers_array = stringToHeaders(lines.slice(1).join('\n'));
+  const headers = headersToString(headers_array);
+
+  const path = `${context.request.path}?${context.request.query}`;
+
+  const id: string = Math.floor(Math.random() * 0xffffffff).toString(16).padStart(8, '0');
+
+  await insertStatement.run(
+    id,
+    context.request.host,
+    context.request.port,
+    method,
+    path,
+    headers,
+    body
+  )
+}
+
+export async function sendQueue(sdk: SDK<BackendAPI, BackendEvents>): Promise<void> {
+  const db = await sdk.meta.db();
+
+  const rows: any = await (await db.prepare("SELECT * FROM queue")).all();
+
+  if (!rows || rows.length === 0) {
+    sdk.api.send("toast", "error", "Error", "The queue is empty");
+    return;
+  }
+
+  const host = rows[0].host
+  const port = rows[0].port
+
+  // Map rows to RequestContext array
+  const requests_to_send: RequestContext[] = [];
+
+  for (const row of rows) {
+    requests_to_send.push({
+      method: row.method,
+      path: row.path,
+      headers: row.headers,
+      body: row.body
+    });
+  }
+
+  sdk.api.send("toast", "info", "Working", "Queued Requests are beint sent...");
+
+  const data: RequestData = await sendSinglePacket(sdk, { host: host, port: parseInt(port, 10), requests: requests_to_send, responses: [] });
+
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS sessions (
+      id TEXT PRIMARY KEY,
+      host TEXT,
+      request_method TEXT,
+      request_path TEXT,
+      request_headers TEXT,
+      request_body TEXT,
+      response_code INTEGER,
+      response_headers TEXT,
+      response_body TEXT
+    );
+  `);
+
+  const insertStatement = await db.prepare(`
+    INSERT INTO sessions (
+      id,
+      host,
+      request_method,
+      request_path,
+      request_headers,
+      request_body,
+      response_code,
+      response_headers,
+      response_body
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  
+  for(const i in data.requests) {
+    const request: RequestContext | undefined = data.requests[i]
+    const response: ResponseContext | undefined = data.responses[i]
+
+    if(request && response) {
+      const id: string = Math.floor(Math.random() * 0xffffffff).toString(16).padStart(8, '0');
+
+      await insertStatement.run(
+        id, 
+        host, 
+        request.method, 
+        request.path, 
+        request.headers, 
+        request.body,
+        response.code,
+        response.headers,
+        response.body
+      )
+    }
+  }
+
+  if(data.responses.length > 0) {
+    sdk.api.send("race-finished");
+  } else {
+    sdk.api.send("toast", "error", "Error", "An error occured while sending the requests");
+  }
+
+  await db.exec(`DELETE FROM queue`);
+}
+
+// BACKEND API DEFINITION
+
 export type BackendAPI = DefineAPI<{
   sendRequests: typeof sendRequests
   getSessions: typeof getSessions
   deleteSession: typeof deleteSession
   log_data: typeof log_data
+
+  queueRequest: typeof queueRequest
+  sendQueue: typeof sendQueue
 }>;
 
 export type BackendEvents = DefineEvents<{
   "race-finished": () => void;
+  "toast": () => void;
 }>;
 
+// ENTRY FUNCTION
 
 export function init(sdk: SDK<BackendAPI, BackendEvents>) {
   // Setup Binary
@@ -253,4 +475,8 @@ export function init(sdk: SDK<BackendAPI, BackendEvents>) {
   sdk.api.register("deleteSession", deleteSession)
 
   sdk.api.register("log_data", log_data)
+
+  sdk.api.register("queueRequest", queueRequest)
+
+  sdk.api.register("sendQueue", sendQueue)
 }

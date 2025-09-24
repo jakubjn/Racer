@@ -42,18 +42,18 @@ export const init = (sdk: FrontendSDK) => {
 
   // Function to Send Request to Plugin
   function sendToPlugin(context: CommandContext) {
-    if(context.type == "RequestRowContext" && context.requests[0]) {
+    if (context.type == "RequestRowContext" && context.requests[0]) {
       const host: string = context.requests[0].host
 
       let allowed: boolean = true
 
-      for(const request of context.requests) {
-        if(host !== request.host) {
+      for (const request of context.requests) {
+        if (host !== request.host) {
           allowed = false
         }
       }
 
-      if(allowed == true) {
+      if (allowed == true) {
         app.config.globalProperties.$toast.add({
           severity: "info",
           summary: "Working",
@@ -75,17 +75,71 @@ export const init = (sdk: FrontendSDK) => {
     }
   }
 
+  //Function to queue requests
+  function queueRequest(context: CommandContext) {
+    if (context.type != "RequestContext") {
+      return
+    }
+
+    app.config.globalProperties.$toast.add({
+      severity: "info",
+      summary: "Working",
+      detail: "Request is being queued...",
+      life: 3000
+    });
+
+    sdk.backend.queueRequest(context)
+  }
+
   // Command to Send Request to Plugin
   sdk.commands.register("send", {
-    name: "Send to Racer",
+    name: "Race",
     run: sendToPlugin,
     group: "Custom Commands",
   });
 
-  // Register the command in Menu
+  // Command to Queue a Request
+  sdk.commands.register("queue", {
+    name: "Queue Request",
+    run: (context) => sdk.backend.queueRequest(context),
+    group: "Custom Commands",
+  });
+
+  // Command to Send the Queued Request
+  sdk.commands.register("send_queue", {
+    name: "Race",
+    run: () => sdk.backend.sendQueue(),
+    group: "Custom Commands",
+  });
+
+  // Register the Commands in Menu
   sdk.menu.registerItem({
     type: "RequestRow",
     commandId: "send",
     leadingIcon: "fa-solid fa-truck-fast",
   });
+
+  sdk.menu.registerItem({
+    type: "Request",
+    commandId: "queue",
+    leadingIcon: "fa-solid fa-truck-fast",
+  });
+
+  sdk.menu.registerItem({
+    type: "RequestRow",
+    commandId: "send",
+    leadingIcon: "fa-solid fa-truck-fast",
+  });
+
+  sdk.menu.registerItem({
+    type: "Request",
+    commandId: "send_queue",
+    leadingIcon: "fa-solid fa-truck-fast",
+  });
 };
+
+
+
+
+
+
