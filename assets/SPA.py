@@ -13,7 +13,9 @@ if getattr(sys, "frozen", True):
 else:
     current_dir = Path(__file__).resolve().parent
 
-options = json.load(open(str(current_dir) + '/data.json'))
+options_path = os.path.join(current_dir, "data.json")
+
+options = json.load(open(options_path))
 
 requests_length = len(options['requests'])
 
@@ -128,6 +130,6 @@ for id in parser.headers_and_data_frames.keys():
 
 options['responses'] = responses
 
-with open(str(current_dir) + "/data.json", "w") as f:
+with open(options_path, "w") as f:
     json.dump(options, f, indent=3)
 

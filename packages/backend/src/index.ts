@@ -5,6 +5,7 @@ import { spawn } from 'child_process';
 import { readFileSync, writeFileSync } from "fs";
 
 import path from "path";
+import os from 'os';
 
 type RequestRaw = {
   id: ID,
@@ -122,7 +123,17 @@ function stringToHeaders(raw: string) {
 // PYTHON INTEROP
 
 function sendSinglePacket(sdk: SDK<BackendAPI, BackendEvents>, data: RequestData): Promise<RequestData> {
-  const py_path = path.join(sdk.meta.assetsPath(), "SPA")
+  const platform = os.platform();
+
+  let binary;
+
+  switch (platform) {
+    case 'win32': binary = "SPA.exe"; break;
+    case 'darwin': binary = "SPA"; break;
+    default: binary = "SPA";
+  }
+
+  const py_path = path.join(sdk.meta.assetsPath(), binary)
   const data_path = path.join(sdk.meta.assetsPath(), "data.json")
 
   writeFileSync(data_path, JSON.stringify(data, null, 2));
@@ -461,10 +472,14 @@ export type BackendEvents = DefineEvents<{
 // ENTRY FUNCTION
 
 export function init(sdk: SDK<BackendAPI, BackendEvents>) {
-  // Setup Binary
-  const py_path = path.join(sdk.meta.assetsPath(), "SPA")
+  const platform = os.platform();
 
-  spawn("chmod", ["+x", py_path], { stdio: "inherit" });
+  // Setup Binary
+  if(platform != 'win32') {
+    const py_path = path.join(sdk.meta.assetsPath(), "SPA")
+
+    spawn("chmod", ["+x", py_path], { stdio: "inherit" });
+  }
 
   // Register API
 

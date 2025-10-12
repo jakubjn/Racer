@@ -1,7 +1,7 @@
 {
   "id": "racer",
   "name": "Racer",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Exploit Race Conditions in Caido with the Single Packet Attack",
   "author": {
     "name": "jakubjn",

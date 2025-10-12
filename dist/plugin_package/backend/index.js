@@ -2,6 +2,7 @@
 import { spawn } from "child_process";
 import { readFileSync, writeFileSync } from "fs";
 import path from "path";
+import os from "os";
 function headersToString(headers) {
   const forbidden = /* @__PURE__ */ new Set([
     "connection",
@@ -58,7 +59,19 @@ function stringToHeaders(raw) {
   return out;
 }
 function sendSinglePacket(sdk, data) {
-  const py_path = path.join(sdk.meta.assetsPath(), "SPA");
+  const platform = os.platform();
+  let binary;
+  switch (platform) {
+    case "win32":
+      binary = "SPA.exe";
+      break;
+    case "darwin":
+      binary = "SPA";
+      break;
+    default:
+      binary = "SPA";
+  }
+  const py_path = path.join(sdk.meta.assetsPath(), binary);
   const data_path = path.join(sdk.meta.assetsPath(), "data.json");
   writeFileSync(data_path, JSON.stringify(data, null, 2));
   return new Promise((resolve, reject) => {
@@ -302,8 +315,11 @@ async function sendQueue(sdk) {
   await db.exec(`DELETE FROM queue`);
 }
 function init(sdk) {
-  const py_path = path.join(sdk.meta.assetsPath(), "SPA");
-  spawn("chmod", ["+x", py_path], { stdio: "inherit" });
+  const platform = os.platform();
+  if (platform != "win32") {
+    const py_path = path.join(sdk.meta.assetsPath(), "SPA");
+    spawn("chmod", ["+x", py_path], { stdio: "inherit" });
+  }
   sdk.api.register("sendRequests", sendRequests);
   sdk.api.register("getSessions", getSessions);
   sdk.api.register("deleteSession", deleteSession);
