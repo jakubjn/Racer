@@ -12,7 +12,7 @@ export default defineConfig({
   id,
   name: "Racer",
   description: "Exploit Race Conditions in Caido with the Single Packet Attack",
-  version: "0.0.2",
+  version: "0.0.3",
   author: {
     name: "jakubjn",
     email: "jakdevreal@gmail.com",
