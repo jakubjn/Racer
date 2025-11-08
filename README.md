@@ -8,22 +8,11 @@ The plugin can be used from both the HTTP History and the Replay Tab. In the Rep
 
 To use the plugin from HTTP History, select two or more requests using Ctrl + Left Click. Right Click on any request you have selected, navigate to the Racer Context Window, and press "Race".
 
-## Contributing
+## Requirements
 
-This repository uses Git LFS, so if you want to download it, you will need to have Git LFS installed. The following commands will work on most Linux Distributions:
+This plugin requires Python 3.x.x along with venv installed on the target system.
 
-```bash
-sudo dnf install git-lfs / sudo apt-get install git-lfs
-git lfs install
-```
-
-If you already installed the repository and want to fetch the files, you can use:
-
-```bash
-git lfs fetch --all
-git lfs checkout
-git lfs pull
-```
+Venv comes packaged with Windows/MacOS Python, however on certain Linux distributions it may be missing.
 
 ## To Do
 
