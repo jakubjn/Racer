@@ -8,10 +8,19 @@ import re
 import h2spacex
 import json
 
-if getattr(sys, "frozen", True):
-    current_dir = os.path.dirname(sys.executable)
-else:
-    current_dir = Path(__file__).resolve().parent
+# Fixes Byte Data Not Being JSON-Safe
+def to_serializable(obj):
+
+    if isinstance(obj, bytes):
+        return obj.decode("utf-8", errors="replace")
+    if isinstance(obj, (list, tuple)):
+        return [to_serializable(i) for i in obj]
+    if isinstance(obj, dict):
+        return {k: to_serializable(v) for k, v in obj.items()}
+    
+    return obj
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
 
 options_path = os.path.join(current_dir, "data.json")
 
@@ -93,10 +102,7 @@ for id in parser.headers_and_data_frames.keys():
 
     headers = parser.headers_and_data_frames[id]['header']
 
-    try:
-        headers = headers.decode("utf-8")
-    except:
-        headers = headers
+    to_serializable(headers)
 
     # Body
 
@@ -109,10 +115,7 @@ for id in parser.headers_and_data_frames.keys():
     elif 'content-encoding: deflate' in headers:
         data = h2spacex.h2_frames.decompress_deflate_data(data)
 
-    try:
-        data = data.decode("utf-8")
-    except:
-        data = data
+    data = to_serializable(data)
 
     # Code
 

@@ -15138,6 +15138,10 @@ const jp = (e) => {
     name: "Race",
     run: () => e.backend.sendQueue(),
     group: "Custom Commands"
+  }), e.commands.register("clear_queue", {
+    name: "Clear Queue",
+    run: () => e.backend.clearQueue(),
+    group: "Custom Commands"
   }), e.menu.registerItem({
     type: "RequestRow",
     commandId: "send",
@@ -15149,6 +15153,10 @@ const jp = (e) => {
   }), e.menu.registerItem({
     type: "RequestRow",
     commandId: "send",
+    leadingIcon: "fa-solid fa-truck-fast"
+  }), e.menu.registerItem({
+    type: "Request",
+    commandId: "clear_queue",
     leadingIcon: "fa-solid fa-truck-fast"
   }), e.menu.registerItem({
     type: "Request",

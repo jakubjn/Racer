@@ -60,22 +60,14 @@ function stringToHeaders(raw) {
 }
 function sendSinglePacket(sdk, data) {
   const platform = os.platform();
-  let binary;
-  switch (platform) {
-    case "win32":
-      binary = "SPA.exe";
-      break;
-    case "darwin":
-      binary = "SPA";
-      break;
-    default:
-      binary = "SPA";
-  }
-  const py_path = path.join(sdk.meta.assetsPath(), binary);
-  const data_path = path.join(sdk.meta.assetsPath(), "data.json");
+  const assetsPath = sdk.meta.assetsPath();
+  const isWin = platform === "win32";
+  const venvPython = isWin ? path.join(assetsPath, "Scripts", "python.exe") : path.join(assetsPath, "bin", "python");
+  const py_path = path.join(assetsPath, "SPA.py");
+  const data_path = path.join(assetsPath, "data.json");
   writeFileSync(data_path, JSON.stringify(data, null, 2));
   return new Promise((resolve, reject) => {
-    const proc = spawn(py_path);
+    const proc = spawn(venvPython, [py_path]);
     let stderr = "";
     proc.stderr.on("data", (data2) => {
       stderr += data2.toString();
@@ -198,6 +190,13 @@ async function deleteSession(sdk, id) {
 async function log_data(sdk, data) {
   sdk.console.log(data);
 }
+async function clearQueue(sdk, toast = true) {
+  const db = await sdk.meta.db();
+  await db.exec(`DELETE FROM queue`);
+  if (toast) {
+    sdk.api.send("toast", "info", "Info", "Cleared Request Queue");
+  }
+}
 async function queueRequest(sdk, context) {
   const db = await sdk.meta.db();
   await db.exec(`
@@ -312,22 +311,52 @@ async function sendQueue(sdk) {
   } else {
     sdk.api.send("toast", "error", "Error", "An error occured while sending the requests");
   }
-  await db.exec(`DELETE FROM queue`);
+  clearQueue(sdk, false);
 }
-function init(sdk) {
+async function init(sdk) {
   const platform = os.platform();
-  if (platform != "win32") {
-    const py_path = path.join(sdk.meta.assetsPath(), "SPA");
-    spawn("chmod", ["+x", py_path], { stdio: "inherit" });
-  }
+  const assetsPath = sdk.meta.assetsPath();
+  const reqPath = path.join(assetsPath, "requirements.txt");
+  await new Promise((resolve) => {
+    const proc = spawn("python3", ["-m", "venv", assetsPath]);
+    let stderr = "";
+    proc.stderr.on("data", (data) => {
+      stderr += data.toString();
+    });
+    proc.on("error", (err) => {
+      sdk.console.error(err);
+    });
+    proc.on("close", (code) => {
+      if (code === 0) resolve();
+      else sdk.console.error(stderr);
+    });
+  });
+  const isWin = platform === "win32";
+  const venvPython = isWin ? path.join(assetsPath, "Scripts", "python.exe") : path.join(assetsPath, "bin", "python");
+  await new Promise((resolve, reject) => {
+    const proc = spawn(venvPython, ["-m", "pip", "install", "-r", reqPath]);
+    let stderr = "";
+    proc.stderr.on("data", (data) => {
+      stderr += data.toString();
+    });
+    proc.on("error", (err) => {
+      sdk.console.error(err);
+    });
+    proc.on("close", (code) => {
+      if (code === 0) resolve();
+      else sdk.console.error(stderr);
+    });
+  });
   sdk.api.register("sendRequests", sendRequests);
   sdk.api.register("getSessions", getSessions);
   sdk.api.register("deleteSession", deleteSession);
   sdk.api.register("log_data", log_data);
   sdk.api.register("queueRequest", queueRequest);
   sdk.api.register("sendQueue", sendQueue);
+  sdk.api.register("clearQueue", clearQueue);
 }
 export {
+  clearQueue,
   deleteSession,
   getSessions,
   init,

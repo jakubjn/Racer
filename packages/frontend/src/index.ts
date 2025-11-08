@@ -112,6 +112,13 @@ export const init = (sdk: FrontendSDK) => {
     group: "Custom Commands",
   });
 
+  sdk.commands.register("clear_queue", {
+    name: "Clear Queue",
+    run: () => sdk.backend.clearQueue(),
+    group: "Custom Commands",
+  });
+
+
   // Register the Commands in Menu
   sdk.menu.registerItem({
     type: "RequestRow",
@@ -128,6 +135,12 @@ export const init = (sdk: FrontendSDK) => {
   sdk.menu.registerItem({
     type: "RequestRow",
     commandId: "send",
+    leadingIcon: "fa-solid fa-truck-fast",
+  });
+
+  sdk.menu.registerItem({
+    type: "Request",
+    commandId: "clear_queue",
     leadingIcon: "fa-solid fa-truck-fast",
   });
 
