@@ -54,7 +54,10 @@ function headersToString(headers: Record<string, string[]>): string {
 
   return Object.entries(headers)
     .filter(([key]) => !forbidden.has(key.toLowerCase()))
-    .map(([key, values]) => `${key.toLocaleLowerCase()}: ${values.join(',')}`)
+    .map(([key, values]) => {
+      const separator = key.toLowerCase() === 'cookie' ? '; ' : ',';
+      return `${key.toLowerCase()}: ${values.join(separator)}`;
+    })
     .join('\n');
 }
 
@@ -357,6 +360,9 @@ export async function queueRequest(sdk: SDK<BackendAPI, BackendEvents>, context:
 
   const headers_array = stringToHeaders(lines.slice(1).join('\n'));
   const headers = headersToString(headers_array);
+
+  sdk.console.warn(headers_array);
+  sdk.console.warn(headers);
 
   const path = `${context.request.path}?${context.request.query}`;
 
