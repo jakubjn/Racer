@@ -233,9 +233,12 @@ async function queueRequest(sdk, context) {
   const method = lines[0].split(" ")[0];
   const headers_array = stringToHeaders(lines.slice(1).join("\n"));
   const headers = headersToString(headers_array);
-  sdk.console.warn(headers_array);
-  sdk.console.warn(headers);
-  const path2 = `${context.request.path}?${context.request.query}`;
+  let path2;
+  if (context.request.query != "") {
+    path2 = `${context.request.path}?${context.request.query}`;
+  } else {
+    path2 = context.request.path;
+  }
   const id = Math.floor(Math.random() * 4294967295).toString(16).padStart(8, "0");
   await insertStatement.run(
     id,
@@ -246,6 +249,7 @@ async function queueRequest(sdk, context) {
     headers,
     body
   );
+  sdk.api.send("toast", "info", "Working", "Request Queued");
 }
 async function sendQueue(sdk) {
   const db = await sdk.meta.db();

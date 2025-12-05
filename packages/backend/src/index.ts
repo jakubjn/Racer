@@ -361,10 +361,13 @@ export async function queueRequest(sdk: SDK<BackendAPI, BackendEvents>, context:
   const headers_array = stringToHeaders(lines.slice(1).join('\n'));
   const headers = headersToString(headers_array);
 
-  sdk.console.warn(headers_array);
-  sdk.console.warn(headers);
+  let path;
 
-  const path = `${context.request.path}?${context.request.query}`;
+  if(context.request.query != "") {
+    path = `${context.request.path}?${context.request.query}`;
+  } else {
+    path = context.request.path;
+  }
 
   const id: string = Math.floor(Math.random() * 0xffffffff).toString(16).padStart(8, '0');
 
@@ -377,6 +380,8 @@ export async function queueRequest(sdk: SDK<BackendAPI, BackendEvents>, context:
     headers,
     body
   )
+
+  sdk.api.send("toast", "info", "Working", "Request Queued");
 }
 
 export async function sendQueue(sdk: SDK<BackendAPI, BackendEvents>): Promise<void> {
